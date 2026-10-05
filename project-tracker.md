@@ -94,36 +94,36 @@ Build an end-to-end financial analytics platform that collects frequently update
 # 5. Project Milestones
 
 Milestone 1 — Project Definition
-[x] Project idea finalized
-[x] Initial scope defined
-[x] Asset universe defined
-[x] Initial data sources defined
-[x] Technology stack defined
-[x] GitHub repository created
-[x] Project tracker created
+- [x] Project idea finalized
+- [x] Initial scope defined
+- [x] Asset universe defined
+- [x] Initial data sources defined
+- [x] Technology stack defined
+- [x] GitHub repository created
+- [x] Project tracker created
 
 
 Milestone 2 — Development Environment
-[x] Python 3.14.6 available
-[x] Git installed
-[x] Git verified
-[x] Local repository cloned
-[x] Python verified
-[x] pip verified
-[x] Virtual environment created
-[x] Virtual environment activated
-[x] Virtual environment verified
-[x] Core Python libraries installed
-[x] Initial project structure created
-[x] Git tracking verified
-[x] Git identity configured
-[x] First project commit created
-[x] Initial project structure pushed to GitHub
+- [x] Python 3.14.6 available
+- [x] Git installed
+- [x] Git verified
+- [x] Local repository cloned
+- [x] Python verified
+- [x] pip verified
+- [x] Virtual environment created
+- [x] Virtual environment activated
+- [x] Virtual environment verified
+- [x] Core Python libraries installed
+- [x] Initial project structure created
+- [x] Git tracking verified
+- [x] Git identity configured
+- [x] First project commit created
+- [x] Initial project structure pushed to GitHub
 
-[ ] PostgreSQL installed
-[ ] PostgreSQL configured
-[ ] Apache Hop installed
-[ ] Power BI Desktop installed
+- [ ] PostgreSQL installed
+- [ ] PostgreSQL configured
+- [ ] Apache Hop installed
+- [ ] Power BI Desktop installed
 
 ## Milestone 3 — Data Acquisition
 
