@@ -1,0 +1,160 @@
+# Ingestion Code
+# Import Library.
+import yfinance as yf
+import os 
+from pathlib import Path
+import pandas as pd
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
+
+def create_db_engine():
+    """
+    Create a SQLAlchemy engine for connecting to the PostgreSQL database.
+    """
+    # locate the .env file in the project root directory.
+    project_root = Path(__file__).resolve().parent.parent
+    load_dotenv(project_root / ".env")  # Load environment variables from the .env file in the project root directory.
+
+    # Read the database settings.
+    connection_url = URL.create(  # URL.create() method builds the connection details safely, including password.
+        drivername="postgresql+psycopg",
+        username=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        host=os.getenv("DB_HOST"),
+        port=(os.getenv("DB_PORT", "5432")),
+        database=os.getenv("DB_NAME")
+    )
+
+    return create_engine(connection_url)
+
+# create a reusable function for downloading data.
+def fetch_market_data(ticker: str, period: str="5y"): 
+    """
+    Here "ticker: str" - indicates that the ticker should be a string, such as "AAPL"
+    "period: str="5y"" - Uses five years of history by default.
+    Retriving historical market data for a ticker from yahoo finance.
+    """
+    data = yf.Ticker(ticker).history(
+        period = period,
+        auto_adjust = False # Requests unadjusted OHLC values and the separate adjusted - close field when provided.
+    )
+
+    if data.empty:# check wheather the returned DataFrame contains any row
+        raise ValueError(f"No market data returned for ticker: {ticker}")
+    return data
+
+def prepare_market_data(data: pd.DataFrame, ticker: str) -> pd.DataFrame:
+    """
+    Prepare downloaded market data for the raw PostrgeSQL table.
+    """
+    prepared = data.copy() # Create a copy of the original DataFrame to avoid modifying it directly.
+    # convert the date index into a regular column
+    prepared = prepared.reset_index() # Reset the index of the DataFrame, moving the date index into a regular column.
+    # Rename yahoo finance columns to match PostgreSQL.
+    prepared = prepared.rename(
+        columns={
+            "Date":"trading_date",
+            "Datetime":"trading_date",
+            "Open":"open_price",
+            "High":"high_price",
+            "Low":"low_price",
+            "Close":"close_price",
+            "Adj Close":"adjusted_close",
+            "Volume":"volume",
+            "Dividends":"dividends",
+            "Stock Splits":"stock_splits"
+        }
+    )
+    # Add the ticker to every row.
+    prepared["ticker"] = ticker
+
+    # keep only the columns required by the database table.
+    prepared = prepared[[
+        "ticker",
+        "trading_date",
+        "open_price",
+        "high_price",
+        "low_price",
+        "close_price",
+        "adjusted_close",
+        "volume",
+        "dividends",
+        "stock_splits"
+    ]]
+
+    # Convert timestamps to dates for the PostgreSQL Date column.
+    prepared["trading_date"] = pd.to_datetime(prepared["trading_date"]).dt.date
+
+    return prepared
+
+if __name__ == "__main__":# Runs the test section when you execute this file directly.
+    ticker = "AAPL"
+    market_data = fetch_market_data(ticker)
+
+    print(f"Ticker: {ticker}")
+    print(f"Rows retrieved: {len(market_data)}")
+    print(
+        f"Data range: {market_data.index.min()}"
+        f"to {market_data.index.max()}"
+    )
+
+    print("\nFirst Five records:")
+    print(market_data.head())
+
+    print("\nColumn Names:")
+    print(market_data.columns.tolist())
+
+    print("\nData types: ")
+    print(market_data.dtypes)
+
+    print("\nMissing Values per column: ")
+    print(market_data.isna().sum())
+
+    print("\nDuplicate date: ")
+    print(market_data.index.duplicated().sum())
+
+    print("\nDate Index sorted: ")
+    print(market_data.index.is_monotonic_increasing)
+
+    print("\nBasic price statistics :")
+    print(market_data[['Open', 'High', 'Low', 'Close']].describe())
+
+    print("\nprice validation: ")
+
+    invalid_prices = (
+    (market_data["High"] < market_data["Low"])
+    | (market_data["High"] < market_data["Open"])
+    | (market_data["High"] < market_data["Close"])
+    | (market_data["Low"] > market_data["Open"])
+    | (market_data["Low"] > market_data["Close"])
+    | (market_data[["Open", "High", "Low", "Close"]] <= 0).any(axis=1)
+)
+
+    print("Invalid price rows: ", invalid_prices.sum())
+
+    print(
+        "negative Volume rows: ",
+        (market_data['Volume'] < 0).sum()
+    )
+
+    print("\nTesting database engine:")
+    engine = create_db_engine()
+
+    try:
+        with engine.connect() as connection:
+            print("Database engine connection successful.")
+    finally:
+        engine.dispose()  # Close the connection engine.
+
+
+    print("\nPreparing market data for PostgreSQL:")
+    prepared_data = prepare_market_data(market_data, ticker)
+    print("Prepared data:")
+    print("Prepared rows: ", len(prepared_data))
+    print("Prepared columns: ", prepared_data.columns.tolist())
+    print("\nFirst five rows of prepared data:")
+    print(prepared_data.head())
+
+    print("\nPrepared data types:")
+    print(prepared_data.dtypes)
