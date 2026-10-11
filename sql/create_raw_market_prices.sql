@@ -20,3 +20,4 @@ create table if not exists raw.market_prices(
 		references analytics.dim_asset(ticker)
 	
 );
+

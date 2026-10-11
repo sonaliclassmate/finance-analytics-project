@@ -7,6 +7,8 @@ import pandas as pd
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import MetaData,Table
 
 def create_db_engine():
     """
@@ -88,6 +90,53 @@ def prepare_market_data(data: pd.DataFrame, ticker: str) -> pd.DataFrame:
 
     return prepared
 
+# Data Loading 
+def load_market_data(
+        prepared_data: pd.DataFrame,
+        engine,
+) -> int:
+    """
+    Insert or Update prepared market records in PostgreSQL table.
+
+    """
+    if prepared_data.empty:
+        print("No data to load.")
+        return 0
+    metadata = MetaData()
+
+    market_prices = Table(
+        "market_prices",
+        metadata,
+        schema="raw",
+        autoload_with=engine
+    )
+
+    records = prepared_data.to_dict(orient="records")  # Convert the DataFrame to a list of dictionaries, where each dictionary represents a row.
+
+    insert_statement = insert(market_prices).values(records)  # Create an insert statement for the market_prices table with the prepared records.
+    #print("DataFrame columns:", prepared_data.columns.tolist())
+    #print("Database columns:", list(market_prices.columns.keys()))
+
+    upsert_statement = insert_statement.on_conflict_do_update(
+        constraint="pk_market_prices",  # Specify the primary key constraint for conflict resolution.
+        set_={
+            "open_price": insert_statement.excluded.open_price,
+            "high_price": insert_statement.excluded.high_price,
+            "low_price": insert_statement.excluded.low_price,
+            "close_price": insert_statement.excluded.close_price,
+            "adjusted_close": insert_statement.excluded.adjusted_close,
+            "volume": insert_statement.excluded.volume,
+            "dividends": insert_statement.excluded.dividends,
+            "stock_splits": insert_statement.excluded.stock_splits,
+            "data_source": insert_statement.excluded.data_source,
+        },
+    )
+    with engine.begin() as connection:  # Use a context manager to handle the database connection and transaction.
+        connection.execute(upsert_statement)  # Execute the upsert statement to insert or update records in the market_prices table.
+
+    return len(records)  # Return the number of records processed (inserted or updated).
+
+
 if __name__ == "__main__":# Runs the test section when you execute this file directly.
     ticker = "AAPL"
     market_data = fetch_market_data(ticker)
@@ -158,3 +207,13 @@ if __name__ == "__main__":# Runs the test section when you execute this file dir
 
     print("\nPrepared data types:")
     print(prepared_data.dtypes)
+
+    print("\nLoading data into PostgreSQL:")
+
+    engine = create_db_engine()  # Create a new database engine for loading data.
+    try:
+        loaded_rows = load_market_data(prepared_data, engine)  # Load the prepared data into the PostgreSQL database.
+        print(f"Successfully loaded {loaded_rows} rows into the database.")
+    finally:
+        engine.dispose()  # Close the connection engine after loading data.
+
