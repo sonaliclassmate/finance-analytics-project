@@ -297,8 +297,19 @@ Milestone 2 — Development Environment
 
 **Completed:** GitHub repository creation
 
-**Currently working on:** Local development environment setup
+### Progress Update — 11 October 2026
 
-**Next step:** Clone/create the local project environment and verify Git/Python setup.
+**Completed**
+- Downloaded and inspected five years of AAPL market data using Python.
+- Checked missing values, duplicate dates, date ordering, price validity, and negative volume.
+- Created the `raw.market_prices` PostgreSQL table.
+- Configured database credentials in `.env` and confirmed `.env` is listed in `.gitignore`.
+- Successfully tested the Python-to-PostgreSQL connection.
 
-**Do not proceed to data acquisition until the development environment is ready.**
+**Technical issue resolved**
+- SQLAlchemy 2.1.3 failed to import because Windows Application Control blocked a compiled component.
+- Changed SQLAlchemy to version 2.0.43.
+- Confirmed that Python can connect to the `finance-analytics` database as `postgres`.
+
+
+
