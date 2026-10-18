@@ -137,8 +137,143 @@ def load_market_data(
     return len(records)  # Return the number of records processed (inserted or updated).
 
 
-if __name__ == "__main__":# Runs the test section when you execute this file directly.
-    ticker = "AAPL"
+if __name__ == "__main__":
+    tickers = [
+        "AAPL",
+        "MSFT",
+        "NVDA",
+        "GOOGL",
+        "META",
+        "JPM",
+        "BAC",
+        "JNJ",
+        "UNH",
+        "XOM",
+        "BTC-USD",
+        "ETH-USD",
+        "^GSPC",
+    ]
+
+    print("Connecting to PostgreSQL...")
+    engine = create_db_engine()
+
+    successful_tickers = []
+    failed_tickers = []
+
+    try:
+        with engine.connect() as connection:
+            print("Database connection successful.")
+
+        for ticker in tickers:
+            print(f"\n{'=' * 50}")
+            print(f"Processing ticker: {ticker}")
+            print(f"{'=' * 50}")
+
+            try:
+                # 1. Download market data.
+                market_data = fetch_market_data(ticker)
+
+                print("Rows retrieved:", len(market_data))
+                print("Date range:", market_data.index.min(), "to", market_data.index.max())
+
+                # 2. Run data-quality checks.
+                print("Missing values:")
+                print(market_data.isna().sum())
+
+                print("Duplicate dates:", market_data.index.duplicated().sum())
+                print("Date index sorted:", market_data.index.is_monotonic_increasing)
+
+                invalid_prices = (
+                    (market_data["High"] < market_data["Low"])
+                    | (market_data["High"] < market_data["Open"])
+                    | (market_data["High"] < market_data["Close"])
+                    | (market_data["Low"] > market_data["Open"])
+                    | (market_data["Low"] > market_data["Close"])
+                    | (
+                        market_data[
+                            ["Open", "High", "Low", "Close"]
+                        ] <= 0
+                    ).any(axis=1)
+                )
+
+                negative_volume_rows = (
+                    market_data["Volume"] < 0
+                ).sum()
+
+                print("Invalid price rows:", invalid_prices.sum())
+                print("Negative volume rows:", negative_volume_rows)
+
+                # Stop loading if critical quality checks fail.
+                if invalid_prices.any():
+                    raise ValueError(
+                        f"{ticker} contains invalid price rows."
+                    )
+
+                if market_data.index.has_duplicates:
+                    raise ValueError(
+                        f"{ticker} contains duplicate dates."
+                    )
+
+                if not market_data.index.is_monotonic_increasing:
+                    raise ValueError(
+                        f"{ticker} dates are not sorted."
+                    )
+
+                # 3. Prepare data for PostgreSQL.
+                prepared_data = prepare_market_data(
+                    market_data,
+                    ticker,
+                )
+
+                print("Prepared rows:", len(prepared_data))
+
+                # 4. Load data into PostgreSQL.
+                loaded_rows = load_market_data(
+                    prepared_data,
+                    engine,
+                )
+
+                print(
+                    f"Successfully processed {loaded_rows} rows "
+                    f"for {ticker}."
+                )
+
+                successful_tickers.append(ticker)
+
+            except Exception as error:
+                print(f"FAILED: {ticker}")
+                print(f"Reason: {error}")
+                failed_tickers.append((ticker, str(error)))
+
+    finally:
+        engine.dispose()
+
+    # 5. Print the final summary.
+    print("\n" + "=" * 50)
+    print("INGESTION SUMMARY")
+    print("=" * 50)
+
+    print("Total tickers:", len(tickers))
+    print("Successful:", len(successful_tickers))
+    print("Failed:", len(failed_tickers))
+
+    print("\nSuccessful tickers:")
+    for ticker in successful_tickers:
+        print("-", ticker)
+
+    if failed_tickers:
+        print("\nFailed tickers:")
+        for ticker, reason in failed_tickers:
+            print(f"- {ticker}: {reason}")
+
+
+
+
+                    
+
+
+
+    '''
     market_data = fetch_market_data(ticker)
 
     print(f"Ticker: {ticker}")
@@ -217,3 +352,4 @@ if __name__ == "__main__":# Runs the test section when you execute this file dir
     finally:
         engine.dispose()  # Close the connection engine after loading data.
 
+'''

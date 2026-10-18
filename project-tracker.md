@@ -120,8 +120,8 @@ Milestone 2 — Development Environment
 - [x] First project commit created
 - [x] Initial project structure pushed to GitHub
 
-- [ ] PostgreSQL installed
-- [ ] PostgreSQL configured
+- [x] PostgreSQL installed
+- [x] PostgreSQL configured
 - [ ] Apache Hop installed
 - [ ] Power BI Desktop installed
 
@@ -311,5 +311,48 @@ Milestone 2 — Development Environment
 - Changed SQLAlchemy to version 2.0.43.
 - Confirmed that Python can connect to the `finance-analytics` database as `postgres`.
 
+
+
+### Progress Update — 12 October 2026
+
+**Completed**
+- Created a reusable Python function to fetch historical market data using yfinance.
+- Implemented data-quality checks for missing values, duplicate dates, date ordering, invalid prices, and negative volume.
+- Created a database engine using SQLAlchemy and credentials loaded from `.env`.
+- Implemented a data-preparation function to align Yahoo Finance columns with the PostgreSQL schema.
+- Implemented repeatable loading using PostgreSQL conflict handling on the `(ticker, trading_date)` primary key.
+- Loaded 1,255 AAPL records into `raw.market_prices`.
+- Verified the database row count and checked for duplicate ticker-date combinations.
+- Corrected a spelling mismatch in the PostgreSQL column name from `dividents` to `dividends`.
+
+**Current architecture**
+Yahoo Finance → Python ingestion and preparation → PostgreSQL `raw.market_prices`
+
+**Next milestone**
+- Expand ingestion to the remaining assets.
+- Make the ingestion process reusable across all configured tickers.
+- Verify data coverage and loading behavior for each asset before building the analytical layer.
+
+
+
+### Multi-Asset Market Data Ingestion — Completed 18 Oct
+
+**Completed**
+- Expanded the Python ingestion pipeline from AAPL to all 13 configured assets.
+- Downloaded approximately five years of historical market data using yfinance.
+- Applied data-quality checks for missing values, duplicate dates, date ordering, invalid prices, and negative volume.
+- Prepared market data for PostgreSQL using a reusable transformation function.
+- Loaded or updated records using PostgreSQL upsert logic.
+- Processed all 13 tickers successfully, with zero reported ingestion failures.
+- Verified that PostgreSQL contains 13 distinct tickers.
+- Verified 17,464 stored records across all assets.
+- Confirmed zero rows with missing ticker or trading-date values.
+- Confirmed that repeatable loading retains earlier records and updates conflicting ticker-date records.
+
+**Current architecture**
+Yahoo Finance → Python ingestion → Data validation → Data preparation → PostgreSQL `raw.market_prices`
+
+**Next milestone**
+Build the macroeconomic data ingestion pipeline using FRED, including series metadata, observation dates, values, and appropriate handling of different data frequencies.
 
 
